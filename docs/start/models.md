@@ -1,6 +1,6 @@
 # Supported Models
 
-Last updated: 09/09/2026.
+Last updated: 09/20/2026.
 
 VeRL-Omni supports RL post-training for generative models across image, video,
 audio, and omni modalities. This page catalogues every model with a ready-to-run
@@ -152,9 +152,13 @@ For dataset layout and launch overrides, see
 | Flow-GRPO (T2AV LoRA) | `examples/flowgrpo_trainer/ltx2/run_ltx2_3_t2av_lora.sh` | 8×GPU (TP=2) |
 | Flow-GRPO (TI2VA LoRA) | `examples/flowgrpo_trainer/ltx2/run_ltx2_3_ti2va_lora.sh` | 8×GPU (TP=1) |
 | Flow-GRPO (T2AV LoRA, NPU) | `examples/flowgrpo_trainer/ltx2/run_ltx2_3_t2av_lora_npu.sh` | 16×NPU (TP=4) |
+| Flow-GRPO (T2AV LoRA, v1 sync) | `examples/flowgrpo_trainer/ltx2/run_ltx2_3_t2av_lora_v1.sh` | 16×NPU (TP=4) or 8×GPU (TP=2) |
+| [DiffusionOPD](../algo/diffusion_opd.md) (T2AV, single teacher) | `examples/diffusionopd_trainer/ltx2/run_ltx2_3_t2av_opd_npu.sh` | 16×NPU (TP=4, teacher colocated) |
 
 **Reward models:** CLAP (`laion/larger_clap_general`) and ImageBind (local
-`.pth`, CC-BY-NC-SA 4.0) for audio-video alignment.
+`.pth`, CC-BY-NC-SA 4.0) for audio-video alignment. The DiffusionOPD recipe
+monitors both but does not put their scores in the loss — see
+[Diffusion On-Policy Distillation](../algo/diffusion_opd.md).
 
 ### MiniMax-H3
 
@@ -314,7 +318,7 @@ trainer's README in `examples/`.
 | DanceGRPO | — | — | — | ✅ | — | — | — | — | — |
 | DPO | ✅ | — | ✅ | — | — | — | — | ✅ | WIP |
 | DiffusionNFT | ✅ | — | — | — | — | ✅ | — | — | — |
-| [DiffusionOPD](../algo/diffusion_opd.md) (incl. MOPD) | — | — | ✅ | — | — | — | — | — | — |
+| [DiffusionOPD](../algo/diffusion_opd.md) (incl. MOPD) | — | — | ✅ | — | ✅ | — | — | — | — |
 | GSPO (incl. OPD) | — | — | — | — | — | — | — | ✅ | WIP |
 
 HunyuanImage-3.0 (MixGRPO / SRPO) appears on the project README as Planned or
