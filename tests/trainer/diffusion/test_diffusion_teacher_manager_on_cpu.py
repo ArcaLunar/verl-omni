@@ -165,10 +165,33 @@ class TestComputePrevSampleMean:
         wg = {"default": FakeTeacherWorkerGroup(3.0, 2, log)}
         manager = make_manager(SINGLE, wg)
 
+        out = manager.compute_prev_sample_mean(make_batch(["x", "y", "z", "w"]))
+
+        assert wg["default"].calls == [("default", 4)]
+        torch.testing.assert_close(out.batch["teacher_prev_sample_mean"], torch.full((4, 4, 8, 3), 3.0))
+
+    def test_single_teacher_pads_batch_that_does_not_divide_its_pool(self):
+        # A standalone pool sizes the teacher independently of the actor, so the batch can be
+        # indivisible; the dispatcher chunks without padding and would raise on the shard split.
+        log = []
+        wg = {"default": FakeTeacherWorkerGroup(3.0, 4, log)}
+        manager = make_manager(SINGLE, wg)
+
         out = manager.compute_prev_sample_mean(make_batch(["x", "y", "z"]))
 
-        assert wg["default"].calls == [("default", 3)]
+        assert wg["default"].calls == [("default", 4)]
         torch.testing.assert_close(out.batch["teacher_prev_sample_mean"], torch.full((3, 4, 8, 3), 3.0))
+
+    def test_single_teacher_colocated_batch_is_not_padded(self):
+        log = []
+        wg = {"default": FakeTeacherWorkerGroup(3.0, 2, log)}
+        manager = make_manager(SINGLE, wg, infer_micro_batch_size_per_gpu=8)
+
+        manager.compute_prev_sample_mean(make_batch(["x", "y"]))
+
+        # micro batch size never widens the single-teacher divisor: a mini-batch that already
+        # divides across the actor's ranks must not grow the teacher's workload
+        assert wg["default"].calls == [("default", 2)]
 
 
 class TestDispatchCollectSplit:

@@ -93,7 +93,11 @@ class DiffusionTeacherManager:
         """Send ``batch`` to its teachers without waiting; returns a handle for ``collect_prev_sample_mean``."""
         routing_keys = self._resolve_teacher_keys(batch)
         if len(self.teacher_model_configs) == 1:
-            return None, [(self._infer(batch, routing_keys[0]), 0)]
+            teacher_key = routing_keys[0]
+            # A standalone pool sizes the teacher independently of the actor, so the batch
+            # need not divide across its ranks, and the dispatcher chunks without padding.
+            padded, pad_size = pad_dataproto_to_divisor(batch, self.teacher_wg[teacher_key].world_size)
+            return None, [(self._infer(padded, teacher_key), pad_size)]
         # dispatch per teacher from the driver so every DP rank of a teacher sees a non-empty shard
         # that splits evenly into forward micro-batches
         order, pending = [], []
