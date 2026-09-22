@@ -226,11 +226,10 @@ class DiffusionAgentLoopWorkerTQ(DiffusionAgentLoopWorker):
             field["rm_scores"] = torch.tensor([internal.reward_score], dtype=torch.float32)
 
         extra = internal.extra_fields
-        for extra_key, value in extra.items():
+        for tensor_key in extra.keys():
+            value = extra.get(tensor_key)
             if isinstance(value, torch.Tensor):
-                field[extra_key] = value.squeeze(0) if value.dim() >= 1 and value.shape[0] == 1 else value
-            elif extra_key == "audio_sample_rate":
-                field[extra_key] = value
+                field[tensor_key] = value.squeeze(0) if value.dim() >= 1 and value.shape[0] == 1 else value
 
         # Non-tensor dataset fields forwarded as-is.
         for non_tensor_key in ["reward_model", "data_source", "extra_info", "raw_prompt"]:
@@ -243,6 +242,13 @@ class DiffusionAgentLoopWorkerTQ(DiffusionAgentLoopWorker):
             extra_fields_out["img_shapes"] = extra["img_shapes"]
         if reward_extra_info is not None:
             extra_fields_out["reward_extra_info"] = reward_extra_info
+        # Tensor media (for example generated audio) is already carried as a
+        # top-level TQ field above. Preserve its non-tensor declaration/metadata
+        # in the envelope that ``diffusion_tq_batch_to_dataproto`` restores.
+        for media_key in ("media_kind", "audio_sample_rate"):
+            media_value = extra.get(media_key)
+            if media_value is not None and not isinstance(media_value, torch.Tensor):
+                extra_fields_out[media_key] = media_value
         # Track the rollout model version this trajectory was generated against.
         step = trajectory["step"] if trajectory else global_steps
         extra_fields_out["min_global_steps"] = step
@@ -257,6 +263,7 @@ class DiffusionAgentLoopWorkerTQ(DiffusionAgentLoopWorker):
                 "status": "success",
                 "prompt_len": prompt_len,
                 "response_len": 1,
+                "response_shape": tuple(int(dim) for dim in field["responses"].shape),
                 "seq_len": prompt_len + 1,
                 "global_steps": step,
                 "min_global_steps": step,
