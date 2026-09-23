@@ -389,6 +389,13 @@ class DiffusionAgentLoopWorker:
 
         # Convert lists back to tensors and stack them to create a batch.
         prompt_ids = torch.cat([input.prompt_ids for input in inputs], dim=0)
+        response_shapes = {tuple(input.response_diffusion_output.shape[1:]) for input in inputs}
+        if len(response_shapes) > 1:
+            raise ValueError(
+                f"Diffusion responses in one batch span divergent shapes: {sorted(response_shapes)}. "
+                "This usually means some samples produced no output; failed rollouts must return a "
+                "well-formed placeholder (see _abort_diffusion_output) or be handled explicitly."
+            )
         response_diffusion_output = torch.cat([input.response_diffusion_output for input in inputs], dim=0)
         optional_outputs = {}
         if inputs[0].response_logprobs is not None:

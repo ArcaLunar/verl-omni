@@ -45,6 +45,30 @@ def _diffusion_output_type(sampling_params: dict[str, Any]) -> str:
     return output_type or "image"
 
 
+def _abort_diffusion_output(output_type: str, sampling_params: dict[str, Any]) -> torch.Tensor:
+    """Build the response tensor for a generation that produced no media.
+
+    Pixel output returns a zero-filled uint8 tensor of the nominal shape derived
+    from the (shared, fixed-resolution) sampling params, so a failed sample stays a
+    well-formed, scoreable response instead of an empty tensor that breaks batch
+    ``torch.cat`` and Ray serialization. Latent output keeps an empty tensor (latent
+    channels are not derivable generically); verl's numpy DataProto serialization is
+    patched to round-trip it (see verl_omni.utils.dataproto_serialization).
+    """
+    if output_type == "latent":
+        return torch.empty(0, dtype=torch.float32)
+    num_frames = sampling_params.get("num_frames") or None
+    height = int(sampling_params.get("height", 0) or 0)
+    width = int(sampling_params.get("width", 0) or 0)
+    if num_frames and num_frames > 1:
+        shape = (int(num_frames), 3, height, width)
+    else:
+        shape = (3, height, width)
+    if 0 in shape:
+        return torch.empty(0, dtype=torch.uint8)
+    return torch.zeros(shape, dtype=torch.uint8)
+
+
 def _pixel_output_to_uint8(output: torch.Tensor) -> torch.Tensor:
     """Quantize a rollout pixel tensor from float ``[0, 1]`` to uint8 once."""
     if output.dtype == torch.uint8:
@@ -259,10 +283,7 @@ class DiffusionStrategy(OmniStrategyBase):
                 "diffusion rollout produced no image (finish_reason=%s); returning %s", finish_reason, stop_reason
             )
             return DiffusionOutput(
-                diffusion_output=torch.empty(
-                    0,
-                    dtype=torch.float32 if output_type == "latent" else torch.uint8,
-                ),
+                diffusion_output=_abort_diffusion_output(output_type, sampling_params),
                 log_probs=None,
                 stop_reason=stop_reason,
                 num_preempted=None,

@@ -902,6 +902,72 @@ def test_diffusion_strategy_omits_audio_sample_rate_without_declared_spec(monkey
     assert "media_kind" not in processed.extra_fields
 
 
+def _no_image_final_res(finish_reason: str = "abort"):
+    return SimpleNamespace(
+        images=[],
+        trajectory_latents=None,
+        trajectory_timesteps=None,
+        trajectory_log_probs=None,
+        multimodal_output=None,
+        request_output=SimpleNamespace(outputs=[SimpleNamespace(finish_reason=finish_reason)]),
+    )
+
+
+def test_diffusion_strategy_no_image_pixel_returns_zero_placeholder():
+    strategy = DiffusionStrategy(SimpleNamespace(global_steps=1))
+
+    output = strategy.process_output(
+        _no_image_final_res(),
+        None,
+        {"output_type": "pt", "height": 256, "width": 384, "num_frames": 81},
+    )
+
+    # A failed generation is a well-formed black video, not an empty tensor, so
+    # batch torch.cat and numpy DataProto transport keep working.
+    assert tuple(output.diffusion_output.shape) == (81, 3, 256, 384)
+    assert output.diffusion_output.dtype == torch.uint8
+    assert bool((output.diffusion_output == 0).all())
+    assert output.stop_reason == "aborted"
+    assert output.extra_fields == {"global_steps": 1}
+
+
+def test_diffusion_strategy_no_image_image_returns_zero_image():
+    strategy = DiffusionStrategy(SimpleNamespace(global_steps=1))
+
+    output = strategy.process_output(
+        _no_image_final_res(),
+        None,
+        {"output_type": "image", "height": 16, "width": 32},
+    )
+
+    assert tuple(output.diffusion_output.shape) == (3, 16, 32)
+    assert output.diffusion_output.dtype == torch.uint8
+
+
+def test_diffusion_strategy_no_image_latent_keeps_empty_float_tensor():
+    strategy = DiffusionStrategy(SimpleNamespace(global_steps=1))
+
+    output = strategy.process_output(
+        _no_image_final_res(),
+        None,
+        {"output_type": "latent"},
+    )
+
+    # Latent channels are not derivable generically; the empty tensor is now
+    # transport-safe via the DataProto serialization patch.
+    assert tuple(output.diffusion_output.shape) == (0,)
+    assert output.diffusion_output.dtype == torch.float32
+
+
+def test_diffusion_strategy_no_image_missing_geometry_keeps_empty_tensor():
+    strategy = DiffusionStrategy(SimpleNamespace(global_steps=1))
+
+    output = strategy.process_output(_no_image_final_res(), None, {"output_type": "pt", "height": 16})
+
+    assert tuple(output.diffusion_output.shape) == (0,)
+    assert output.diffusion_output.dtype == torch.uint8
+
+
 @pytest.mark.parametrize(
     ("strategy_cls", "priority", "expected_extra_keys"),
     [
