@@ -23,8 +23,12 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "version/vers
 # serialization patch (zero-length tensor round-trip) is installed here; it is a
 # no-op unless VERL_DATAPROTO_SERIALIZATION_METHOD=numpy.
 from verl_omni.utils.dataproto_serialization import patch_dataproto_serialization  # noqa: E402
+from verl_omni.utils.npu_rmsnorm_patch import patch_diffusers_npu_rmsnorm  # noqa: E402
 
 patch_dataproto_serialization()
+# Affine-less RMSNorm (e.g. LTX-2.x blocks with weight=None) crashes diffusers'
+# NPU branch; patch it before any engine forward. No-op on other backends.
+patch_diffusers_npu_rmsnorm()
 
 # Apply model patches and auto-register agent loops / pipelines / rollout / reward loop / engines
 import verl_omni.agent_loop  # noqa: E402, F401
