@@ -59,7 +59,8 @@ def _load_imagebind(device: str, model_path: str):
         except ImportError as exc:
             raise ImportError(
                 "ImageBind reward requires `pip install git+https://github.com/facebookresearch/ImageBind.git` "
-                "and is licensed CC-BY-NC-SA 4.0 for non-commercial use."
+                "and is licensed CC-BY-NC-SA 4.0 for non-commercial use. If `import imagebind` fails with "
+                "`No module named 'pkg_resources'`, install setuptools<81 (`pip install \"setuptools<81\"`)."
             ) from exc
         warnings.warn(
             "ImageBind is licensed CC-BY-NC-SA 4.0 (NonCommercial).",
@@ -237,7 +238,11 @@ def compute_score(
     try:
         from imagebind.models.imagebind_model import ModalityType
     except ImportError as exc:
-        raise ImportError("ImageBind reward requires the non-commercial ImageBind package.") from exc
+        raise ImportError(
+            "ImageBind reward requires the non-commercial ImageBind package. If `import imagebind` "
+            "fails with `No module named 'pkg_resources'`, install setuptools<81 "
+            '(`pip install "setuptools<81"`).'
+        ) from exc
 
     if mode not in _SUPPORTED_MODES:
         raise ValueError(f"Unknown ImageBind mode {mode!r}; expected one of: {', '.join(_SUPPORTED_MODES)}.")
