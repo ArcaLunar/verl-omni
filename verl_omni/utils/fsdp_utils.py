@@ -604,4 +604,13 @@ def collect_lora_params(
         else:
             detail = "(FSDP LoRA collection returned no tensors)."
         raise RuntimeError(f"collect_lora_params collected 0 parameters {detail}")
+    # Strip FSDP wrapper segments and the PEFT adapter-name segment from LoRA
+    # keys (e.g. ``...lora_A.default._fsdp_wrapped_module.weight`` ->
+    # ``...lora_A.weight``). vLLM's ``parse_fine_tuned_lora_name`` only accepts
+    # checkpoint-style keys whose penultimate segment is ``lora_A``/``lora_B``;
+    # leaking FSDP prefixes makes ``add_lora`` fail and the rollout keeps base
+    # weights. Base keys are untouched (``_lora_checkpoint_key`` passes through).
+    lora_params = OrderedDict(
+        (_lora_checkpoint_key(name, adapter_name) or name, param) for name, param in lora_params.items()
+    )
     return lora_params

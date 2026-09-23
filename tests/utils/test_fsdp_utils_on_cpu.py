@@ -138,3 +138,59 @@ def test_layered_collects_fsdp_leaf_lora_when_peft_dump_is_empty(monkeypatch):
     )
     assert list(params) == ["transformer_blocks.0.attn.lora_A.weight"]
     torch.testing.assert_close(params["transformer_blocks.0.attn.lora_A.weight"], torch.ones(2, 4))
+
+
+def test_collect_lora_params_normalizes_fsdp_wrapped_lora_keys(monkeypatch):
+    """LTX-2.3: FSDP-wrapped LoRA keys stream to vLLM without FSDP/adapter segments.
+
+    vLLM's ``parse_fine_tuned_lora_name`` only accepts checkpoint-style keys whose
+    penultimate segment is ``lora_A``/``lora_B``; leaked ``_fsdp_wrapped_module.``
+    segments make ``add_lora`` fail (``is unsupported LoRA weight``).
+    """
+    from collections import OrderedDict
+
+    import verl_omni.utils.fsdp_utils as fsdp_utils
+
+    module = _peft_dit()
+    lora_a_key = "transformer_blocks.0._fsdp_wrapped_module.to_q.lora_A.default._fsdp_wrapped_module.weight"
+    lora_b_key = "transformer_blocks.0._fsdp_wrapped_module.to_q.lora_B.default._fsdp_wrapped_module.weight"
+    tainted = OrderedDict({lora_a_key: torch.ones(2, 4), lora_b_key: torch.ones(4, 2)})
+    monkeypatch.setattr(fsdp_utils, "fsdp_version", lambda _: 2)
+    monkeypatch.setattr(fsdp_utils, "_peft_lora_params_to_cpu", lambda *args, **kwargs: tainted)
+
+    params = collect_lora_params(
+        module,
+        layered_summon=False,
+        base_sync_done=True,
+        is_diffusers=True,
+    )
+
+    assert list(params) == ["transformer_blocks.0.to_q.lora_A.weight", "transformer_blocks.0.to_q.lora_B.weight"]
+    torch.testing.assert_close(params["transformer_blocks.0.to_q.lora_A.weight"], torch.ones(2, 4))
+    torch.testing.assert_close(params["transformer_blocks.0.to_q.lora_B.weight"], torch.ones(4, 2))
+
+
+def test_collect_lora_params_leaves_base_keys_untouched(monkeypatch):
+    """Base-weight sync must not be mutated by the LoRA key normalizer."""
+    from collections import OrderedDict
+
+    import verl_omni.utils.fsdp_utils as fsdp_utils
+
+    module = _peft_dit()
+    base_weight_key = "transformer_blocks.0._fsdp_wrapped_module.to_q.weight"
+    lora_a_key = "transformer_blocks.0._fsdp_wrapped_module.to_q.lora_A.default._fsdp_wrapped_module.weight"
+    base = OrderedDict({base_weight_key: torch.ones(4, 4), lora_a_key: torch.ones(2, 4)})
+    monkeypatch.setattr(fsdp_utils, "fsdp_version", lambda _: 2)
+    monkeypatch.setattr(fsdp_utils, "_peft_lora_params_to_cpu", lambda *args, **kwargs: base)
+
+    params = collect_lora_params(
+        module,
+        layered_summon=False,
+        base_sync_done=True,
+        is_diffusers=True,
+    )
+
+    # Non-LoRA keys pass through; only the LoRA key is normalized.
+    assert base_weight_key in params
+    assert "transformer_blocks.0.to_q.lora_A.weight" in params
+    assert lora_a_key not in params
