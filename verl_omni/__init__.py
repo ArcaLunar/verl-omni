@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "version/version")) as f:
     __version__ = f.read().strip()
 
+# Every verl-omni Ray actor imports this package, so the numpy DataProto
+# serialization patch (zero-length tensor round-trip) is installed here; it is a
+# no-op unless VERL_DATAPROTO_SERIALIZATION_METHOD=numpy.
+from verl_omni.utils.dataproto_serialization import patch_dataproto_serialization  # noqa: E402
+
+patch_dataproto_serialization()
 
 # Apply model patches and auto-register agent loops / pipelines / rollout / reward loop / engines
 import verl_omni.agent_loop  # noqa: E402, F401
