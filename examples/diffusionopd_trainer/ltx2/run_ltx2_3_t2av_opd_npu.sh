@@ -16,7 +16,8 @@
 #
 # The teacher is colocated with the actor by default. Export TEACHER_NNODES and
 # TEACHER_NPUS to move it onto its own pool when the colocated run runs out of
-# memory; size TEACHER_NPUS so it divides ppo_mini_batch_size.
+# memory; size the pool so TEACHER_NNODES * TEACHER_NPUS *
+# ref.log_prob_micro_batch_size_per_gpu divides train_batch_size * rollout.n.
 #
 # Auto-detects NPU or GPU and runs with appropriate configuration.
 set -x

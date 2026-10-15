@@ -1,6 +1,6 @@
 # LTX-2.3 audio-video on-policy distillation
 
-Last updated: 09/20/2026
+Last updated: 10/15/2026
 
 This recipe distills a frozen `dg845/LTX-2.3-Diffusers` teacher into an LTX-2.3
 LoRA student on the text-to-audio-video (T2AV) task. The student generates joint
@@ -78,9 +78,12 @@ TEACHER_PATH=/path/to/merged-teacher TEACHER_NNODES=1 TEACHER_NPUS=4 \
 ```
 
 A standalone pool isolates the teacher's memory from the actor and from the rollout
-engine's sleep/wake cycle. Size `TEACHER_NPUS` so it divides
-`actor_rollout_ref.actor.ppo_mini_batch_size` (16 by default); otherwise the batch is
-padded up to the pool's world size and the teacher scores rows that are then discarded.
+engine's sleep/wake cycle. Each step the teacher scores the whole training batch,
+`data.train_batch_size × actor_rollout_ref.rollout.n` trajectories (256 by default),
+in micro-batches of `actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu` (1 by
+default) per rank. Size the pool so `TEACHER_NNODES × TEACHER_NPUS ×` that micro-batch
+size divides the batch; otherwise the batch is padded up to the next multiple and the
+teacher scores rows that are then discarded.
 
 ## What to expect
 
