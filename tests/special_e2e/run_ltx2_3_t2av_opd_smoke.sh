@@ -8,6 +8,13 @@
 # pure-CPU jpeg compressibility score, so no reward-model server is needed --
 # this smoke is about the teacher runtime, not about reward quality.
 #
+# A clean exit is not enough evidence: the engine skips the optimizer step and
+# keeps training when the gradients are not finite. The run therefore tees its
+# console log and check_ltx2_opd_smoke.py fails the smoke unless the logged step
+# shows a finite, positive distill_kl, a finite grad_norm, no skipped optimizer
+# step, and a worker-side report (ltx2_opd_smoke_hooks.py) that the LoRA student
+# weights actually changed.
+#
 # Unlike run_diffusion_teacher_smoke.sh this needs real checkpoints: there is no
 # tiny-random LTX-2.3 builder, so MODEL_PATH and TEACHER_PATH must both point at
 # full diffusers pipelines resolving to the same scheduler config. That is why it
@@ -30,6 +37,14 @@ TEACHER_NPUS=${TEACHER_NPUS:-0}
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "${repo_root}"
 
+SMOKE_LOG=${SMOKE_LOG:-${DATA_DIR}/ltx2_3_t2av_opd_smoke.log}
+mkdir -p "$(dirname "${SMOKE_LOG}")"
+
+# The worker hook imports by module name, so expose the smoke directory to the
+# Ray workers through the runtime env as well as to this shell.
+export LTX2_OPD_SMOKE_ASSERTIONS=1
+export PYTHONPATH="${repo_root}/tests/special_e2e:${repo_root}${PYTHONPATH:+:${PYTHONPATH}}"
+
 n_resp_per_prompt=2
 micro_bsz_per_gpu=1
 mini_bsz=$((micro_bsz_per_gpu * NUM_GPUS))
@@ -43,6 +58,7 @@ if [[ ! -f "${DATA_DIR}/train.parquet" ]]; then
         --val_size 2
 fi
 
+set +e
 python3 -m verl_omni.trainer.main_diffusion_v1 \
     data.train_files="${DATA_DIR}/train.parquet" \
     data.val_files="${DATA_DIR}/test.parquet" \
@@ -118,4 +134,19 @@ python3 -m verl_omni.trainer.main_diffusion_v1 \
     trainer.total_epochs=1 \
     trainer.total_training_steps="${TOTAL_TRAIN_STEPS}" \
     trainer.use_v1=true \
-    trainer.v1.trainer_mode=sync "$@"
+    trainer.v1.trainer_mode=sync \
+    +ray_kwargs.ray_init.runtime_env.worker_process_setup_hook=ltx2_opd_smoke_hooks.install \
+    "+ray_kwargs.ray_init.runtime_env.env_vars.PYTHONPATH=\"${PYTHONPATH}\"" \
+    '+ray_kwargs.ray_init.runtime_env.env_vars.LTX2_OPD_SMOKE_ASSERTIONS="1"' \
+    "$@" 2>&1 | tee "${SMOKE_LOG}"
+trainer_rc=${PIPESTATUS[0]}
+set -e
+
+if [[ "${trainer_rc}" -ne 0 ]]; then
+    echo "LTX-2.3 T2AV OPD smoke: training exited with ${trainer_rc}; see ${SMOKE_LOG}" >&2
+    exit "${trainer_rc}"
+fi
+
+python3 tests/special_e2e/check_ltx2_opd_smoke.py \
+    --log "${SMOKE_LOG}" \
+    --min-steps "${TOTAL_TRAIN_STEPS}"
