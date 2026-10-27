@@ -109,8 +109,6 @@ class DiffusionTeacherManager:
         """Wait on a ``dispatch_prev_sample_mean`` handle, returning scores in the input row order."""
         order, pending = handle
         outputs = [unpad_dataproto(self._to_dataproto(future.get()), pad_size) for future, pad_size in pending]
-        if order is None:
-            return outputs[0]
         teacher_output = DataProto.concat(outputs)
         teacher_output.reorder(torch.from_numpy(np.argsort(np.concatenate(order))))
         return teacher_output
