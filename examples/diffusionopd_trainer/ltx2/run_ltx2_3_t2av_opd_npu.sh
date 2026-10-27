@@ -68,8 +68,8 @@ ltx_lora_targets="['attn1.to_q','attn1.to_k','attn1.to_v','attn1.to_out.0','attn
 
 if [ "$DEVICE" = "npu" ]; then
     ASCEND_HOME_PATH=${ASCEND_HOME_PATH:-/usr/local/Ascend/ascend-toolkit}
-    source $ASCEND_HOME_PATH/set_env.sh
-    source $ASCEND_HOME_PATH/../nnal/atb/set_env.sh
+    source "$ASCEND_HOME_PATH/set_env.sh"
+    source "$ASCEND_HOME_PATH/../nnal/atb/set_env.sh"
 
     # Ascend cannot unpickle the default DataProto payloads across Ray actors.
     export VERL_DATAPROTO_SERIALIZATION_METHOD=numpy
@@ -94,9 +94,9 @@ CLAP_MODEL_PATH=${CLAP_MODEL_PATH:-laion/larger_clap_general}
 IMAGEBIND_MODEL_PATH=${IMAGEBIND_MODEL_PATH:-$repo_root/.checkpoints/imagebind_huge.pth}
 
 python3 -m verl_omni.trainer.main_diffusion_v1 \
-    trainer.device=$DEVICE \
-    data.train_files=$train_path \
-    data.val_files=$test_path \
+    "trainer.device=$DEVICE" \
+    "data.train_files=$train_path" \
+    "data.val_files=$test_path" \
     data.train_batch_size=32 \
     data.val_max_samples=1024 \
     data.max_prompt_length=1024 \
@@ -105,10 +105,10 @@ python3 -m verl_omni.trainer.main_diffusion_v1 \
     algorithm.adv_estimator=flow_grpo \
     algorithm.global_std=True \
     distillation.enabled=True \
-    distillation.nnodes=$TEACHER_NNODES \
-    distillation.n_gpus_per_node=$TEACHER_NPUS \
-    distillation.teacher_models.teacher_model.model_path=$TEACHER_PATH \
-    actor_rollout_ref.model.path=$MODEL_PATH \
+    "distillation.nnodes=$TEACHER_NNODES" \
+    "distillation.n_gpus_per_node=$TEACHER_NPUS" \
+    "distillation.teacher_models.teacher_model.model_path=$TEACHER_PATH" \
+    "actor_rollout_ref.model.path=$MODEL_PATH" \
     actor_rollout_ref.model.algorithm=flow_grpo \
     actor_rollout_ref.model.attn_backend=native \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
@@ -131,15 +131,15 @@ python3 -m verl_omni.trainer.main_diffusion_v1 \
     actor_rollout_ref.actor.use_kl_loss=False \
     actor_rollout_ref.actor.kl_loss_coef=0.0 \
     actor_rollout_ref.actor.fsdp_config.model_dtype=bfloat16 \
-    actor_rollout_ref.actor.fsdp_config.param_offload=$PARAM_OFFLOAD \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=$OPTIMIZER_OFFLOAD \
+    "actor_rollout_ref.actor.fsdp_config.param_offload=$PARAM_OFFLOAD" \
+    "actor_rollout_ref.actor.fsdp_config.optimizer_offload=$OPTIMIZER_OFFLOAD" \
     actor_rollout_ref.actor.fsdp_config.ulysses_sequence_parallel_size=1 \
     actor_rollout_ref.rollout.name=vllm_omni \
     actor_rollout_ref.rollout.rollout_attn_backend=TORCH_SDPA \
-    actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP \
+    "actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP" \
     actor_rollout_ref.rollout.n=8 \
     actor_rollout_ref.rollout.seed=42 \
-    actor_rollout_ref.rollout.agent.num_workers=$((NUM_GPUS / ROLLOUT_TP)) \
+    "actor_rollout_ref.rollout.agent.num_workers=$((NUM_GPUS / ROLLOUT_TP))" \
     actor_rollout_ref.rollout.agent.default_agent_loop=ltx2_diffusion_single_turn_agent \
     actor_rollout_ref.rollout.load_format=safetensors \
     actor_rollout_ref.rollout.layered_summon=True \
@@ -190,18 +190,18 @@ python3 -m verl_omni.trainer.main_diffusion_v1 \
     trainer.logger='["console","wandb"]' \
     trainer.project_name=diffusion_opd \
     trainer.experiment_name=ltx2_3_t2av_opd \
-    trainer.default_local_dir=$checkpoint_dir \
-    trainer.validation_data_dir=$validation_data_dir \
+    "trainer.default_local_dir=$checkpoint_dir" \
+    "trainer.validation_data_dir=$validation_data_dir" \
     trainer.validation_data_max_samples=8 \
     trainer.log_val_generations=8 \
     trainer.video_fps=24 \
     trainer.val_before_train=True \
-    trainer.n_gpus_per_node=$NUM_GPUS \
+    "trainer.n_gpus_per_node=$NUM_GPUS" \
     trainer.nnodes=1 \
-    trainer.resume_mode=$RESUME_MODE \
+    "trainer.resume_mode=$RESUME_MODE" \
     trainer.save_freq=50 \
     trainer.test_freq=20 \
     trainer.total_epochs=15 \
-    trainer.total_training_steps=$TOTAL_TRAINING_STEPS \
+    "trainer.total_training_steps=$TOTAL_TRAINING_STEPS" \
     trainer.use_v1=true \
     trainer.v1.trainer_mode=sync "$@"
