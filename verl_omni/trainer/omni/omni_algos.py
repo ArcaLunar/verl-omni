@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Omni AR direct-preference loss functions."""
+"""Omni AR direct-preference loss functions and distillation actor-loss overrides."""
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import torch
 import torch.nn.functional as F
@@ -29,6 +29,9 @@ __all__ = [
     "register_omni_loss",
     "get_omni_loss_fn",
     "OmniDPOLoss",
+    "OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY",
+    "register_omni_distillation_actor_loss",
+    "build_omni_distillation_actor_loss",
 ]
 
 
@@ -56,6 +59,44 @@ def get_omni_loss_fn(name: str):
     if name not in OMNI_LOSS_REGISTRY:
         raise ValueError(f"Unsupported omni loss mode: {name}. Supported modes are: {list(OMNI_LOSS_REGISTRY.keys())}")
     return OMNI_LOSS_REGISTRY[name]
+
+
+# distillation loss_mode -> builder(config) of the actor loss that replaces verl's distillation_ppo_loss
+OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY: dict[str, Callable[[Any], Callable]] = {}
+
+
+def register_omni_distillation_actor_loss(loss_mode: str) -> Callable[[Callable], Callable]:
+    """Register a builder of the actor loss for a distillation ``loss_mode``.
+
+    verl builds the actor loss as ``distillation_ppo_loss``, whose logits stage only knows
+    top-k forward KL. A loss mode that needs its own logits stage registers a builder taking
+    the full trainer config and returning the loss function set on the actor worker group.
+    """
+
+    def decorator(builder: Callable) -> Callable:
+        if loss_mode in OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY:
+            raise ValueError(f"Distillation actor loss {loss_mode!r} is already registered.")
+        OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY[loss_mode] = builder
+        return builder
+
+    return decorator
+
+
+def build_omni_distillation_actor_loss(config) -> Optional[Callable]:
+    """Return the actor loss registered for ``config.distillation``'s loss mode, or ``None``.
+
+    Args:
+        config: Full trainer config.
+
+    Returns:
+        Optional[Callable]: Loss function for ``set_loss_fn``; ``None`` when distillation is off
+        or the loss mode keeps verl's default.
+    """
+    distillation = config.get("distillation")
+    if distillation is None or not distillation.get("enabled", False):
+        return None
+    builder = OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY.get(distillation.distillation_loss.loss_mode)
+    return None if builder is None else builder(config)
 
 
 @register_omni_loss("dpo")

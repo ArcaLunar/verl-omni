@@ -56,6 +56,8 @@ class RowKind(IntEnum):
     TEACHER_TOKEN_MISSING = 10
     # position that neither starts on nor reaches a sync point
     UNSYNCED = 11
+    # the prompt carries a modality the teacher does not accept
+    UNSUPPORTED_INPUT = 12
 
 
 # Rows that contribute to the loss.

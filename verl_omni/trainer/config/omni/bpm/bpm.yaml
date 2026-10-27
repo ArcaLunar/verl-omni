@@ -1,0 +1,35 @@
+# BPM cross-tokenizer on-policy distillation, read when
+# distillation.distillation_loss.loss_mode is bpm.
+
+# Required when using verl.utils.omega_conf_to_dataclass to instantiate dataclass configs
+_target_: verl_omni.workers.config.omni.BPMConfig
+
+# Teacher tokenizer/processor path; null uses the teacher model path.
+teacher_tokenizer_path: null
+
+# Extra keyword arguments for the teacher's apply_chat_template.
+teacher_chat_template_kwargs: {}
+
+# Text appended to the teacher's generation prompt, where the assistant answer starts.
+teacher_generation_suffix: ""
+
+# Media processor kwargs sent with each teacher request.
+teacher_mm_processor_kwargs: {}
+
+# Input modalities the teacher accepts; samples carrying any other modality are not distilled.
+teacher_modalities: ["image", "video"]
+
+# Withhold all-whitespace (space/tab) student tokens from the loss.
+mask_whitespace_rows: true
+
+# Divergence axis: 0 forward KL, (0, 1) generalized JSD, 1 skew reverse KL.
+beta: 0.5
+
+# Skew of the reverse-KL endpoint, used when beta is 1.
+rkl_lambda: 0.1
+
+# Realized stop row: bridge trains it under forward KL, skip drops it.
+stop_bridge: bridge
+
+# Rows per checkpointed chunk in the loss.
+loss_row_chunk: 2048

@@ -21,7 +21,7 @@ from verl.trainer.ppo.utils import Role
 from verl.trainer.ppo.v1.trainer_base import PPOTrainer
 from verl.trainer.ppo.v1.trainer_separate_async import PPOTrainerSeparateAsync
 
-from verl_omni.trainer.omni import ray_omni_trainer_separate_async
+from verl_omni.trainer.omni import omni_algos, ray_omni_trainer_separate_async
 from verl_omni.trainer.omni import trainer_base as omni_trainer_base
 from verl_omni.trainer.omni.ray_omni_trainer import OmniPPOTrainerSync
 from verl_omni.trainer.omni.ray_omni_trainer_separate_async import OmniPPOTrainerSeparateAsync
@@ -34,6 +34,7 @@ class _RecordingWorkerGroup:
     def __init__(self, *, resource_pool, ray_cls_with_init, **kwargs):
         self.resource_pool = resource_pool
         self.kwargs = kwargs
+        self.loss_fns = []
         _RecordingWorkerGroup.created.append(self)
 
     def spawn(self, prefix_set):
@@ -46,7 +47,7 @@ class _RecordingWorkerGroup:
         pass
 
     def set_loss_fn(self, loss_fn):
-        pass
+        self.loss_fns.append(loss_fn)
 
 
 class _FakeServerSide:
@@ -166,6 +167,35 @@ def test_setup_without_range_passes_no_master_port_range(stubbed_setup):
 
     assert len(stubbed_setup.created) == 2
     assert all("master_port_range" not in wg.kwargs for wg in stubbed_setup.created)
+
+
+def test_setup_installs_the_actor_loss_of_a_registered_distillation_mode(stubbed_setup, monkeypatch):
+    sentinel = object()
+    monkeypatch.setitem(omni_algos.OMNI_DISTILLATION_ACTOR_LOSS_REGISTRY, "fake_mode", lambda config: sentinel)
+    config = _config()
+    config.distillation = {"enabled": True, "distillation_loss": {"loss_mode": "fake_mode"}}
+    OmniPPOTrainer._setup(_SetupHarness(config))
+
+    [actor_wg] = stubbed_setup.created
+    assert actor_wg.loss_fns == [sentinel]
+
+
+@pytest.mark.parametrize(
+    "distillation",
+    [
+        None,
+        {"enabled": False, "distillation_loss": {"loss_mode": "bpm"}},
+        {"enabled": True, "distillation_loss": {"loss_mode": "k3"}},
+    ],
+)
+def test_setup_keeps_verl_actor_loss_otherwise(stubbed_setup, distillation):
+    config = _config()
+    if distillation is not None:
+        config.distillation = distillation
+    OmniPPOTrainer._setup(_SetupHarness(config))
+
+    [actor_wg] = stubbed_setup.created
+    assert actor_wg.loss_fns == []
 
 
 def test_separate_async_setup_gives_groups_sub_ranges_and_lora_manager(stubbed_setup, monkeypatch):

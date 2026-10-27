@@ -1156,6 +1156,20 @@ ray_kwargs:
     runtime_env:
       py_executable: null
   timeline_json_file: null
+bpm:
+  _target_: verl_omni.workers.config.omni.BPMConfig
+  teacher_tokenizer_path: null
+  teacher_chat_template_kwargs: {}
+  teacher_generation_suffix: ''
+  teacher_mm_processor_kwargs: {}
+  teacher_modalities:
+  - image
+  - video
+  mask_whitespace_rows: true
+  beta: 0.5
+  rkl_lambda: 0.1
+  stop_bridge: bridge
+  loss_row_chunk: 2048
 async_training:
   staleness_threshold: 0.1
   trigger_parameter_sync_step: 4

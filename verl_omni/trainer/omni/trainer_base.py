@@ -35,6 +35,7 @@ from verl.workers.config import CriticConfig, DistillationConfig, TrainingWorker
 from verl.workers.rollout.llm_server import LLMServerManager
 from verl.workers.utils.losses import value_loss
 
+from verl_omni.trainer.omni.omni_algos import build_omni_distillation_actor_loss
 from verl_omni.utils.config import resolve_lora_config
 from verl_omni.utils.net_utils import worker_group_port_ranges
 
@@ -139,6 +140,10 @@ class OmniPPOTrainer(PPOTrainer):
         # 6. initialize actor and ref model engine
         self.actor_rollout_wg = all_wg[str(actor_role)]
         self.actor_rollout_wg.init_model()
+        # DIFF vs upstream: a registered distillation loss mode replaces the actor loss.
+        actor_loss_fn = build_omni_distillation_actor_loss(self.config)
+        if actor_loss_fn is not None:
+            self.actor_rollout_wg.set_loss_fn(actor_loss_fn)
         logger.info("actor and ref model engine initialized")
 
         # if ref_in_actor is True, the reference policy will be actor without lora applied

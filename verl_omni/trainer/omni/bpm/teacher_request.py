@@ -114,6 +114,7 @@ def build_teacher_request(
     tokenizer,
     template_owner=None,
     chat_template_kwargs: Optional[dict[str, Any]] = None,
+    generation_suffix: str = "",
     tools: Optional[list[dict[str, Any]]] = None,
 ) -> TeacherRequest:
     """Render the prompt with the teacher template and tokenize prompt and response.
@@ -128,6 +129,8 @@ def build_teacher_request(
         template_owner: Object owning the teacher chat template (e.g. a VLM processor).
             Defaults to ``tokenizer``.
         chat_template_kwargs: Extra keyword arguments for ``apply_chat_template``.
+        generation_suffix: Text appended to the rendered generation prompt, where the
+            assistant answer starts.
         tools: Tool schemas passed to the chat template.
 
     Returns:
@@ -143,7 +146,7 @@ def build_teacher_request(
     if tools is not None:
         template_kwargs["tools"] = tools
     prompt_text = owner.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, **template_kwargs)
-    prompt_text = normalize_think_seam(prompt_text, response_text)
+    prompt_text = normalize_think_seam(prompt_text + generation_suffix, response_text)
     prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
     response_ids = tokenizer.encode(response_text, add_special_tokens=False)
     return TeacherRequest(prompt_ids=prompt_ids, response_ids=response_ids, stop_id=int(tokenizer.eos_token_id))

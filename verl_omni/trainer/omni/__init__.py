@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import verl_omni.trainer.omni.bpm.losses  # noqa: F401  -- registers the bpm distillation loss
 from verl_omni.trainer.omni.ray_omni_trainer import OmniDirectPreferenceRayTrainer, OmniPPOTrainerSync  # noqa: F401
 from verl_omni.trainer.omni.ray_omni_trainer_separate_async import OmniPPOTrainerSeparateAsync  # noqa: F401
 

@@ -1149,3 +1149,17 @@ agentic_image_gen:
   force_reflection_after_judge: true
   rewrite_judge_before_generate: true
   e2e_root: null
+bpm:
+  _target_: verl_omni.workers.config.omni.BPMConfig
+  teacher_tokenizer_path: null
+  teacher_chat_template_kwargs: {}
+  teacher_generation_suffix: ''
+  teacher_mm_processor_kwargs: {}
+  teacher_modalities:
+  - image
+  - video
+  mask_whitespace_rows: true
+  beta: 0.5
+  rkl_lambda: 0.1
+  stop_bridge: bridge
+  loss_row_chunk: 2048

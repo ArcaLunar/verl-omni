@@ -11,6 +11,7 @@ hydra:
 defaults:
   - ppo_megatron_trainer
   - omni/model@actor_rollout_ref.model: omni_model
+  - omni/bpm@bpm: bpm
   - _self_
 
 # Fully asynchronous defaults. Sync recipes may override these fields.

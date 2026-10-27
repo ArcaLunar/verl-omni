@@ -91,6 +91,20 @@ def test_build_teacher_request_round_trips_response_bytes():
     assert all(row.kind == RowKind.ONE_TO_ONE for row in alignment.rows)
 
 
+def test_build_teacher_request_appends_the_generation_suffix():
+    tokenizer = _teacher_tokenizer()
+    messages = [{"role": "user", "content": "solve 2 + 2"}]
+    request = build_teacher_request(
+        messages,
+        "4",
+        tokenizer=tokenizer,
+        chat_template_kwargs={"enable_thinking": False},
+        generation_suffix=" to=user:",
+    )
+    assert tokenizer.decode(request.prompt_ids) == "<|user|>solve 2 + 2<|assistant|> to=user:"
+    assert tokenizer.decode(request.response_ids) == "4"
+
+
 def test_teacher_response_rows_are_taken_from_the_end():
     # 3 prompt tokens expanded to 5 by the engine, 2 response tokens, 1 stop: 8 rows
     num_rows, response_len = 8, 2
