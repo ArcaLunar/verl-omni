@@ -1,7 +1,7 @@
 (examples_overview)=
 # Which example should I run?
 
-Last updated: 10/06/2026
+Last updated: 10/28/2026
 
 {doc}`../start/models` is the full catalogue: every supported model with its
 architecture, trainers, example scripts, and hardware requirements. This page
@@ -43,7 +43,7 @@ kept up to date with every recipe.
 
 | Goal | Start with |
 |---|---|
-| Post-train an omni-modality AR model (text/image/audio/video in) | [Qwen3-Omni thinker GSPO](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/qwen3_omni/README.md), also [DAPO](dapo_trainer.md) and [OPD distillation](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/README.md#mmk12-on-policy-distillation-opd) — see the [Qwen3-Omni notes](../start/models.md#qwen3-omni-30b-a3b-thinker) |
+| Post-train an omni-modality AR model (text/image/audio/video in) | [Qwen3-Omni thinker GSPO](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/qwen3_omni/README.md), also [DAPO](dapo_trainer.md) and [OPD distillation](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/README.md#mmk12-on-policy-distillation-opd), or [cross-tokenizer OPD with BPM](bpm_trainer.md) for a teacher from another family — see the [Qwen3-Omni notes](../start/models.md#qwen3-omni-30b-a3b-thinker) |
 | Post-train a TTS model | [Qwen3-TTS GRPO](https://github.com/verl-project/verl-omni/blob/main/examples/grpo_trainer/qwen3_tts/README.md) — see the [Qwen3-TTS notes](../start/models.md#qwen3-tts-12hz-06b-base) |
 
 ## Before you launch

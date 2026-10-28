@@ -87,7 +87,7 @@ def test_build_teacher_request_round_trips_response_bytes():
 
     bridge = TokenizerBridge.from_tokenizers(tokenizer, tokenizer)
     student_ids = tokenizer.encode(response, add_special_tokens=False)
-    alignment = align_sample(bridge, student_ids, request.response_ids, mask_whitespace_rows=True)
+    alignment = align_sample(bridge, student_ids, request.response_ids, whitespace_mask="all")
     assert all(row.kind == RowKind.ONE_TO_ONE for row in alignment.rows)
 
 

@@ -146,7 +146,7 @@ class BPMTeacher:
             self.bridge,
             list(response_ids),
             teacher_response_ids,
-            mask_whitespace_rows=self.bpm_config.mask_whitespace_rows,
+            whitespace_mask=self.bpm_config.whitespace_mask,
         )
         return build_sample_targets(self.bridge, alignment, topk_ids, topk_logprobs)
 

@@ -19,8 +19,8 @@ teacher_mm_processor_kwargs: {}
 # Input modalities the teacher accepts; samples carrying any other modality are not distilled.
 teacher_modalities: ["image", "video"]
 
-# Withhold all-whitespace (space/tab) student tokens from the loss.
-mask_whitespace_rows: true
+# All-whitespace (space/tab) student tokens withheld from the loss: all, indentation, or off.
+whitespace_mask: all
 
 # Divergence axis: 0 forward KL, (0, 1) generalized JSD, 1 skew reverse KL.
 beta: 0.5

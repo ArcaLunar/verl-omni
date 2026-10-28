@@ -206,6 +206,7 @@ def test_logits_stage_rejects_misaligned_targets_and_unknown_strategy():
         ({"stop_bridge": "floor"}, "stop_bridge"),
         ({"teacher_modalities": ["image", "depth"]}, "teacher_modalities"),
         ({"loss_row_chunk": 0}, "loss_row_chunk"),
+        ({"whitespace_mask": "code"}, "whitespace_mask"),
     ],
 )
 def test_bpm_config_validation(override, message):

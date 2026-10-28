@@ -1165,7 +1165,7 @@ bpm:
   teacher_modalities:
   - image
   - video
-  mask_whitespace_rows: true
+  whitespace_mask: all
   beta: 0.5
   rkl_lambda: 0.1
   stop_bridge: bridge

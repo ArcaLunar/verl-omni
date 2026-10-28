@@ -73,6 +73,7 @@ algo/grpo_guard.md
 algo/mixgrpo.md
 algo/diffusion_opd.md
 algo/omni_opd.md
+algo/bpm.md
 algo/deterministic_post_training.md
 algo/performance.md
 ```
@@ -99,6 +100,7 @@ examples/omninft_trainer.md
 examples/dgpo_trainer.md
 examples/awm_trainer.md
 examples/diffusionopd_trainer.md
+examples/bpm_trainer.md
 examples/flowgrpo_trainer_sd35_drm.md
 examples/qwen_image/flowgrpo_trainer_qwen_image.md
 examples/qwen_image_edit/flowgrpo_trainer_qwen_image_edit.md

@@ -41,8 +41,9 @@ class BPMConfig(BaseConfig):
     # Input modalities the teacher accepts; samples carrying any other modality are not distilled.
     teacher_modalities: list[str] = field(default_factory=lambda: ["image", "video"])
 
-    # Withhold all-whitespace (space/tab) student tokens from the loss (Sec. 4.3 of the paper).
-    mask_whitespace_rows: bool = True
+    # All-whitespace (space/tab) student tokens withheld from the loss (Sec. 4.3 of the paper):
+    # "all" as in the paper, "indentation" only inside a line's leading whitespace, or "off".
+    whitespace_mask: str = "all"
 
     # Divergence axis: 0 = forward KL, (0, 1) = generalized JSD, 1 = skew reverse KL.
     beta: float = 0.5
@@ -67,6 +68,11 @@ class BPMConfig(BaseConfig):
             raise ValueError(f"Invalid beta: {self.beta}. Must be in [0, 1]")
         if self.beta == 1.0 and not 0.0 < self.rkl_lambda < 1.0:
             raise ValueError(f"Invalid rkl_lambda: {self.rkl_lambda}. Must be in (0, 1) when beta is 1")
+        valid_whitespace_masks = {"all", "indentation", "off"}
+        if self.whitespace_mask not in valid_whitespace_masks:
+            raise ValueError(
+                f"Invalid whitespace_mask: {self.whitespace_mask}. Must be one of {sorted(valid_whitespace_masks)}"
+            )
         valid_stop_bridges = {"bridge", "skip"}
         if self.stop_bridge not in valid_stop_bridges:
             raise ValueError(f"Invalid stop_bridge: {self.stop_bridge}. Must be one of {sorted(valid_stop_bridges)}")

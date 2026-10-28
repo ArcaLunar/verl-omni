@@ -1,6 +1,6 @@
 # Qwen3-Omni On-Policy Distillation
 
-Last updated: 09/09/2026.
+Last updated: 10/28/2026.
 
 ## Background
 
@@ -117,7 +117,8 @@ Column used to route samples to teachers in multi-teacher setups. Default:
 Path to the frozen teacher checkpoint. **Required.**
 
 **Constraint:** teacher and student must share the same tokenizer (same model
-family). Cross-vocabulary distillation is not supported.
+family). For a teacher with a different tokenizer, use
+[cross-tokenizer distillation (BPM)](bpm.md).
 
 ### `distillation.teacher_models.<name>.inference.*` (RolloutConfig)
 

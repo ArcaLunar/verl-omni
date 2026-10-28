@@ -28,6 +28,8 @@ from verl_omni.trainer.omni.bpm.tokenizer_bridge import TokenizerBridge
 
 __all__ = ["RowKind", "RowPlan", "SampleAlignment", "TRAINED_KINDS", "align_sample"]
 
+_INDENT_BYTES = frozenset(b" \t")
+
 
 class RowKind(IntEnum):
     """Target construction for one student response position."""
@@ -125,12 +127,25 @@ def _student_content(bridge: TokenizerBridge, response_ids: list[int]) -> tuple[
     return content_positions, None
 
 
+def _masks_whitespace(mode: str, bridge: TokenizerBridge, student_id: int, content_bytes: bytes, start: int) -> bool:
+    """Whether the all-whitespace mask (Sec. 4.3 of the paper) withholds the token at ``start``."""
+    if mode == "off" or student_id not in bridge.student_whitespace_ids:
+        return False
+    if mode == "all":
+        return True
+    if mode == "indentation":
+        # Qwen-style tokenizers also emit a lone space before every number; only indentation is masked here
+        line_start = content_bytes.rfind(b"\n", 0, start) + 1
+        return set(content_bytes[line_start:start]) <= _INDENT_BYTES
+    raise ValueError(f"Invalid whitespace_mask: {mode}. Must be one of ['all', 'indentation', 'off']")
+
+
 def align_sample(
     bridge: TokenizerBridge,
     student_response_ids: list[int],
     teacher_response_ids: list[int],
     *,
-    mask_whitespace_rows: bool,
+    whitespace_mask: str,
 ) -> SampleAlignment:
     """Classify every student response position against the teacher segmentation.
 
@@ -138,7 +153,9 @@ def align_sample(
         bridge: Tokenizer bridge of the pair.
         student_response_ids: Sampled student response ids, including the stop token if any.
         teacher_response_ids: Teacher tokenization of the student response text (no stop token).
-        mask_whitespace_rows: Withhold all-whitespace student tokens from the loss.
+        whitespace_mask: Which all-whitespace student tokens to withhold from the loss: ``"all"``
+            (the paper's mask), ``"indentation"`` (only those inside a line's leading
+            whitespace) or ``"off"``.
 
     Returns:
         SampleAlignment: Per-position row plans plus the teacher-side offsets they refer to.
@@ -189,7 +206,7 @@ def align_sample(
         length = end - start
         if end > synced_len:
             kind, governing, within = RowKind.UNSYNCED, -1, 0
-        elif mask_whitespace_rows and student_id in bridge.student_whitespace_ids:
+        elif _masks_whitespace(whitespace_mask, bridge, student_id, content_bytes, start):
             kind, governing, within = RowKind.WHITESPACE_MASKED, -1, 0
         elif start in teacher_index_at:
             governing, within = teacher_index_at[start], 0

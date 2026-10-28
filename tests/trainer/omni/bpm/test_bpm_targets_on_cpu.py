@@ -24,8 +24,8 @@ from verl_omni.trainer.omni.bpm.targets import build_sample_targets, target_widt
 STUDENT_STOP, TEACHER_STOP = 900, 901  # the make_bridge fixture's stop ids
 
 
-def _build(bridge, student_ids, teacher_ids, rows, teacher_rows, mask_whitespace_rows=True):
-    alignment = align_sample(bridge, student_ids, teacher_ids, mask_whitespace_rows=mask_whitespace_rows)
+def _build(bridge, student_ids, teacher_ids, rows, teacher_rows, whitespace_mask="all"):
+    alignment = align_sample(bridge, student_ids, teacher_ids, whitespace_mask=whitespace_mask)
     return build_sample_targets(bridge, alignment, *teacher_rows(rows))
 
 
@@ -196,7 +196,7 @@ def test_trained_rows_are_distributions(make_bridge, seed):
     vocab = sorted(teacher) + [TEACHER_STOP]
     probs = rng.dirichlet(np.ones(len(vocab)), size=len(teacher_ids) + 1)
     ids = np.tile(np.array(vocab), (len(teacher_ids) + 1, 1))
-    alignment = align_sample(bridge, student_ids, teacher_ids, mask_whitespace_rows=True)
+    alignment = align_sample(bridge, student_ids, teacher_ids, whitespace_mask="all")
     targets = build_sample_targets(bridge, alignment, ids, np.log(probs))
 
     # the full teacher vocabulary is given, so no row lacks a teacher factor
