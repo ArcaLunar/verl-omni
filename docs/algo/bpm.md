@@ -113,11 +113,13 @@ tokenizer, top-k or data problem.
 
 Recipe:
 [`examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh`](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/README.md),
-Qwen3-Omni-30B-A3B-Instruct Thinker (LoRA) distilled from Muse-Glimmer-30B on MMK12.
+Qwen3-Omni-30B-A3B-Instruct Thinker (LoRA) distilled from Muse-Glimmer-30B on MMK12,
+with an Ascend NPU variant (`..._npu.sh`).
 
-GPU smoke: `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh` builds a tiny
-Qwen3-Omni student and a tiny Muse-Glimmer teacher with differently trained tokenizers and
-runs two steps on 3 GPUs.
+Smoke: `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh` (GPU) and
+`run_bpm_qwen3_omni_thinker_lora_npu_smoke.sh` (Ascend NPU) build a tiny Qwen3-Omni student
+and a tiny Muse-Glimmer teacher with differently trained tokenizers and run two steps on
+3 devices.
 
 ## Limitations
 

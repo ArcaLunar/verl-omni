@@ -56,6 +56,11 @@ _FSDP_STRATEGIES = {"fsdp", "fsdp2", "veomni"}
 _EPS = 1e-12
 
 
+def _is_content_kind(kinds: torch.Tensor) -> torch.Tensor:
+    # plain comparisons instead of torch.isin, which not every accelerator backend implements
+    return torch.stack([kinds == kind for kind in _DIVERGENCE_KINDS]).any(dim=0)
+
+
 def _xlogy_ratio(weight: torch.Tensor, log_weight: torch.Tensor, log_ref: torch.Tensor) -> torch.Tensor:
     """``sum weight * (log_weight - log_ref)`` over cells, with ``0 * log 0 = 0``."""
     return torch.where(weight > 0, weight * (log_weight - log_ref), torch.zeros_like(weight)).sum(-1)
@@ -100,7 +105,7 @@ def _chunk_row_losses(
         divergence = _xlogy_ratio(student, log_p, torch.log(skewed.clamp_min(_EPS)))
 
     zeros = torch.zeros_like(forward_kl)
-    content = torch.isin(kinds, torch.tensor(_DIVERGENCE_KINDS, device=kinds.device, dtype=kinds.dtype))
+    content = _is_content_kind(kinds)
     losses = torch.where(content, divergence, zeros)
     losses = torch.where(kinds == RowKind.FORCED_DELTA, forward_kl, losses)
     if train_stop:
@@ -237,7 +242,7 @@ def compute_bpm_distillation_loss(
     for kind in RowKind:
         share = ((kinds == kind) & response_mask).sum() / num_tokens
         metrics[f"distillation/bpm_rows_{kind.name.lower()}"] = share.item()
-    trained = response_mask & torch.isin(kinds, torch.tensor(_DIVERGENCE_KINDS, device=kinds.device))
+    trained = response_mask & _is_content_kind(kinds)
     if trained.any():
         metrics["distillation/bpm_q_other"] = other[trained].mean().item()
     return losses, metrics

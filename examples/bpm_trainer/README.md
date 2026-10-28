@@ -7,9 +7,10 @@ tokenizer differs from the student's. The student samples its own responses; the
 scores them after re-rendering the prompt in its own chat template, and its next-token
 distribution is mapped onto the student vocabulary by byte-prefix marginalization.
 
-| Recipe | Student / teacher | Launcher |
-| --- | --- | --- |
-| MMK12 LoRA, pure distillation | Qwen3-Omni-30B-A3B-Instruct Thinker / Muse-Glimmer-30B | [run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh) |
+| Recipe | Student / teacher | Platform | Launcher |
+| --- | --- | --- | --- |
+| MMK12 LoRA, pure distillation | Qwen3-Omni-30B-A3B-Instruct Thinker / Muse-Glimmer-30B | GPU | [run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh) |
+| MMK12 LoRA, pure distillation | same | Ascend NPU | [run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer_npu.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer_npu.sh) |
 
 ## Qwen3-Omni Thinker from Muse-Glimmer-30B on MMK12
 
@@ -27,6 +28,11 @@ channel: `to=self` for reasoning, `to=user` for the answer. The recipe sets
 `bpm.teacher_generation_suffix=' to=user<|message|>'`, so the teacher scores each student
 response as its answer to the user, exactly as the chat template renders an assistant
 answer.
+
+On Ascend NPU (910C, 16 NPUs per node) use the `_npu` launcher: it defaults to 8 NPUs for
+the student and 8 for the teacher (four TP=2 replicas on vllm-ascend), and adds the
+vllm-ascend settings of the Qwen3-Omni NPU recipes (`VLLM_ASCEND_ENABLE_NZ=0`,
+`weight_nz_mode=0`, piecewise graphs). All other environment variables are shared.
 
 Data preparation and dependencies follow the
 [MMK12 GSPO recipe](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/README.md):
@@ -62,5 +68,6 @@ samples roughly one row in eight is not 1:1 and BPM's 1:N and N:1 targets are in
 
 - CPU: `tests/trainer/omni/bpm/test_bpm_recipe_on_cpu.py` composes this launcher's
   overrides and checks the teacher, loss and agent-loop wiring.
-- GPU smoke (3 GPUs): `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh`.
+- Smoke on 3 devices with a tiny random student and teacher: `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh` (GPU) and
+  `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_npu_smoke.sh` (Ascend NPU).
 - The full-size recipe has not been run yet.
