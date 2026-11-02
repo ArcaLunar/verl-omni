@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BPM cross-tokenizer distillation e2e smoke: tiny Qwen3-Omni Thinker (LoRA) student,
-# tiny Muse-Glimmer teacher served by verl's native vLLM replica.
+# tiny Qwen3.5-MoE teacher served by verl's native vLLM replica.
 #
 # The two tiny models carry differently trained tokenizers, so the run exercises BPM's
 # cross-tokenizer alignment end to end: teacher prompt re-rendering, top-k teacher
@@ -23,7 +23,7 @@ export VERL_USE_EXTERNAL_MODULES=verl_omni
 NUM_GPUS=${NUM_GPUS:-2}
 TEACHER_GPUS=${TEACHER_GPUS:-1}
 STUDENT_PATH=${STUDENT_PATH:-${HOME}/models/tiny-random/Qwen3-Omni}
-TEACHER_PATH=${TEACHER_PATH:-${HOME}/models/tiny-random/Muse-Glimmer}
+TEACHER_PATH=${TEACHER_PATH:-${HOME}/models/tiny-random/Qwen3.5}
 DATA_DIR=${DATA_DIR:-${HOME}/data/gsm8k}
 TOTAL_TRAIN_STEPS=${TOTAL_TRAIN_STEPS:-2}
 LOG_FILE=${LOG_FILE:-$(mktemp -t bpm_smoke.XXXXXX.log)}
@@ -33,7 +33,7 @@ EXCLUDE_MODULES=".*talker.*|.*code2wav.*|.*code_predictor.*|.*visual.*|.*audio_t
 
 # ── Build tiny models (no Hub access) and dummy data ──────────────────────────
 python3 "${REPO_ROOT}/tests/special_e2e/build_qwen3_omni_tiny_random.py" --output-dir "${STUDENT_PATH}" --force
-python3 "${REPO_ROOT}/tests/special_e2e/build_muse_glimmer_tiny_random.py" --output-dir "${TEACHER_PATH}" --force
+python3 "${REPO_ROOT}/tests/special_e2e/build_qwen3_5_tiny_random.py" --output-dir "${TEACHER_PATH}" --force
 if [ ! -f "${DATA_DIR}/train.parquet" ]; then
     python3 "${REPO_ROOT}/tests/special_e2e/create_dummy_math_data.py" --local_save_dir "${DATA_DIR}"
 fi
@@ -102,7 +102,6 @@ python3 -m verl_omni.trainer.main_omni \
     distillation.teacher_models.teacher_model.inference.max_model_len=1024 \
     distillation.teacher_models.teacher_model.inference.enable_prefix_caching=False \
     bpm.beta=0.5 \
-    bpm.teacher_generation_suffix="' to=user<|message|>'" \
     reward.reward_manager.source=register \
     reward.reward_manager.name=naive \
     trainer.val_before_train=false \
@@ -131,4 +130,4 @@ if ! awk -v share="${n_to_one:-0}" 'BEGIN { exit !(share > 0) }'; then
     echo "BPM smoke failed: no N:1 rows were trained (bpm_rows_n_to_one=${n_to_one:-missing})" >&2
     exit 1
 fi
-echo "BPM Qwen3-Omni Thinker + Muse-Glimmer teacher e2e smoke passed (log: ${LOG_FILE})."
+echo "BPM Qwen3-Omni Thinker + Qwen3.5-MoE teacher e2e smoke passed (log: ${LOG_FILE})."

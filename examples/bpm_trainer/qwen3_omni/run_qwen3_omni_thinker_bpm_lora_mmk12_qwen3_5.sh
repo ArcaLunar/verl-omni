@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Qwen3-Omni Thinker + LoRA on MMK12, distilled on-policy from Muse-Glimmer-30B with BPM
+# Qwen3-Omni Thinker + LoRA on MMK12, distilled on-policy from Qwen3.5-35B-A3B with BPM
 # (cross-tokenizer, arXiv:2607.22334). Pure distillation: no task reward in the loss.
 #
 # Layout on one 8-GPU node: student rollout + actor on TRAIN_GPUS, the teacher on
 # TEACHER_GPUS (TEACHER_TP GPUs per vLLM replica).
 #
-# The teacher scores each student response as its answer to the user: Muse-Glimmer's
-# generation prompt stops at "<|start|>assistant", so the recipe appends the answer
-# channel header " to=user<|message|>" (bpm.teacher_generation_suffix).
+# The teacher re-renders the prompt with its own chat template. Qwen3.5's generation
+# prompt ends with "<|im_start|>assistant\n<think>\n"; BPM's seam normalization strips
+# that pre-filled "<think>" so the teacher scores the student's own response from the
+# same byte prefix. Keep the default chat-template kwargs (thinking on): passing
+# enable_thinking=false pre-fills an empty "<think>...</think>" block and breaks the seam.
 #
 # Data preparation (run once):
 #   pip install math-verify
@@ -18,7 +20,7 @@
 #
 # Paths (env overrides):
 #   STUDENT_PATH  Qwen3-Omni-30B-A3B-Instruct checkpoint
-#   TEACHER_PATH  Muse-Glimmer-30B checkpoint (its tokenizer and chat template are read from it)
+#   TEACHER_PATH  Qwen3.5-35B-A3B checkpoint (its tokenizer, processor and chat template are read from it)
 #   TRAIN_FILE / VAL_FILE  MMK12 parquet files
 set -euo pipefail
 
@@ -26,7 +28,7 @@ set -euo pipefail
 export VERL_USE_EXTERNAL_MODULES=verl_omni
 
 STUDENT_PATH=${STUDENT_PATH:-"$HOME/models/Qwen/Qwen3-Omni-30B-A3B-Instruct"}
-TEACHER_PATH=${TEACHER_PATH:-"$HOME/models/meta-models/Muse-Glimmer-30B"}
+TEACHER_PATH=${TEACHER_PATH:-"$HOME/models/Qwen/Qwen3.5-35B-A3B"}
 TRAIN_FILE=${TRAIN_FILE:-"$HOME/data/mmk12/train.parquet"}
 VAL_FILE=${VAL_FILE:-"$HOME/data/mmk12/test.parquet"}
 TRAIN_GPUS=${TRAIN_GPUS:-4}
@@ -114,7 +116,6 @@ python3 -m verl_omni.trainer.main_omni \
     bpm.beta="${BETA}" \
     bpm.whitespace_mask="${WHITESPACE_MASK}" \
     bpm.teacher_modalities="['image']" \
-    bpm.teacher_generation_suffix="' to=user<|message|>'" \
     reward.reward_manager.source=register \
     reward.reward_manager.name=naive \
     reward.custom_reward_function.path=verl_omni/utils/reward_score/mmk12_reward.py \
@@ -124,7 +125,7 @@ python3 -m verl_omni.trainer.main_omni \
     trainer.critic_warmup=0 \
     trainer.logger='["console","wandb"]' \
     trainer.project_name=bpm \
-    trainer.experiment_name=qwen3_omni_thinker_lora_mmk12_bpm_muse_glimmer \
+    trainer.experiment_name=qwen3_omni_thinker_lora_mmk12_bpm_qwen3_5 \
     trainer.n_gpus_per_node="${TRAIN_GPUS}" \
     trainer.nnodes=1 \
     trainer.save_freq=50 \

@@ -29,8 +29,8 @@ from verl_omni.trainer.omni.omni_algos import build_omni_distillation_actor_loss
 
 REPO_ROOT = Path(__file__).parents[4]
 RECIPE_DIR = REPO_ROOT / "examples/bpm_trainer/qwen3_omni"
-LAUNCHER = RECIPE_DIR / "run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh"
-NPU_LAUNCHER = RECIPE_DIR / "run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer_npu.sh"
+LAUNCHER = RECIPE_DIR / "run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh"
+NPU_LAUNCHER = RECIPE_DIR / "run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5_npu.sh"
 
 
 def _launcher_argv(tmp_path, *extra, launcher=LAUNCHER, **env_overrides):
@@ -57,7 +57,7 @@ def _compose(argv):
 @pytest.fixture(scope="module")
 def recipe_config(tmp_path_factory):
     result, argv = _launcher_argv(
-        tmp_path_factory.mktemp("bpm-recipe"), "trainer.total_epochs=1", TEACHER_PATH="/models/muse-glimmer"
+        tmp_path_factory.mktemp("bpm-recipe"), "trainer.total_epochs=1", TEACHER_PATH="/models/qwen3.5-35b-a3b"
     )
     assert result.returncode == 0, result.stderr
     return _compose(argv)
@@ -67,7 +67,7 @@ def test_recipe_uses_a_native_vllm_vlm_teacher(recipe_config):
     distillation = omega_conf_to_dataclass(recipe_config.distillation)
     [teacher] = distillation.teacher_models.values()
     assert type(teacher) is DistillationTeacherModelConfig
-    assert teacher.model_path == "/models/muse-glimmer"
+    assert teacher.model_path == "/models/qwen3.5-35b-a3b"
     assert teacher.inference.name == "vllm"
     assert teacher.num_replicas == 2  # 4 teacher GPUs at TP=2
     assert teacher.inference.engine_kwargs["vllm"]["max_logprobs"] == 64
@@ -79,7 +79,7 @@ def test_recipe_builds_the_bpm_loss_and_agent_loop(recipe_config):
     loss_fn = build_omni_distillation_actor_loss(recipe_config)
     bpm = loss_fn.keywords["bpm_config"]
     assert (bpm.beta, bpm.whitespace_mask, bpm.teacher_modalities) == (0.0, "all", ["image"])
-    assert bpm.teacher_generation_suffix == " to=user<|message|>"
+    assert bpm.teacher_generation_suffix == ""
     assert bpm.teacher_mm_processor_kwargs == {}
     manager_fqn = recipe_config.actor_rollout_ref.rollout.agent.agent_loop_manager_class
     assert load_class_from_fqn(manager_fqn, "AgentLoopManager") is BPMAgentLoopManagerTQ

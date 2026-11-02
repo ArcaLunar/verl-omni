@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ascend NPU variant of run_bpm_qwen3_omni_thinker_lora_smoke.sh: tiny Qwen3-Omni Thinker
-# (LoRA) student on 2 NPUs, tiny Muse-Glimmer teacher on 1 NPU served by vllm-ascend.
+# (LoRA) student on 2 NPUs, tiny Qwen3.5-MoE teacher on 1 NPU served by vllm-ascend.
 #
 # Override via env: ASCEND_RT_VISIBLE_DEVICES (3 devices), plus the base smoke's variables.
 set -euo pipefail

@@ -1,6 +1,6 @@
 # Cross-Tokenizer On-Policy Distillation (BPM)
 
-Last updated: 10/30/2026.
+Last updated: 11/02/2026.
 
 ## Background
 
@@ -68,8 +68,8 @@ Distillation settings required by BPM:
 The actor-loss builder rejects runs that would change the objective (another
 `loss_agg_mode`, a loss clamp, or policy-gradient mode). Exactly one teacher is supported.
 
-A teacher outside the omni model registry (for example Muse-Glimmer) runs on verl's
-native vLLM replica:
+A teacher outside the omni model registry (for example Qwen3.5-35B-A3B or Muse-Glimmer) runs
+on verl's native vLLM replica:
 
 ```bash
 distillation.teacher_models.teacher_model._target_=verl.workers.config.DistillationTeacherModelConfig
@@ -88,7 +88,7 @@ The `bpm` group (`verl_omni/trainer/config/omni/bpm/bpm.yaml`, dataclass `BPMCon
 | `teacher_modalities` | `[image, video]` | Input modalities the teacher accepts; other samples are not distilled. |
 | `teacher_mm_processor_kwargs` | `{}` | Media processor kwargs sent with each teacher request, e.g. `max_pixels`. |
 | `teacher_chat_template_kwargs` | `{}` | Extra arguments for the teacher's chat template. |
-| `teacher_generation_suffix` | `""` | Text appended to the teacher's generation prompt, where the assistant answer starts (e.g. Muse-Glimmer's ` to=user<\|message\|>` channel header). |
+| `teacher_generation_suffix` | `""` | Text appended to the teacher's generation prompt, where the assistant answer starts (empty for Qwen-style teachers; Muse-Glimmer needed its ` to=user<\|message\|>` channel header). |
 | `teacher_tokenizer_path` | `null` | Local or Hub tokenizer path; defaults to the teacher model path. |
 | `loss_row_chunk` | `2048` | Rows per checkpointed chunk in the loss. |
 
@@ -112,13 +112,13 @@ tokenizer, top-k or data problem.
 ## Usage
 
 Recipe:
-[`examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_muse_glimmer.sh`](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/README.md),
-Qwen3-Omni-30B-A3B-Instruct Thinker (LoRA) distilled from Muse-Glimmer-30B on MMK12,
+[`examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh`](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/README.md),
+Qwen3-Omni-30B-A3B-Instruct Thinker (LoRA) distilled from Qwen3.5-35B-A3B on MMK12,
 with an Ascend NPU variant (`..._npu.sh`).
 
 Smoke: `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh` (GPU) and
 `run_bpm_qwen3_omni_thinker_lora_npu_smoke.sh` (Ascend NPU) build a tiny Qwen3-Omni student
-and a tiny Muse-Glimmer teacher with differently trained tokenizers and run two steps on
+and a tiny Qwen3.5-MoE teacher with differently trained tokenizers and run two steps on
 3 devices.
 
 ## Limitations
