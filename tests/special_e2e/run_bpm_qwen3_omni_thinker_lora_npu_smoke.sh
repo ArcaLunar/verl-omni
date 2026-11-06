@@ -25,8 +25,12 @@ if [[ -f /usr/local/Ascend/nnal/atb/set_env.sh ]]; then
 fi
 set -u
 
+# vllm-ascend's AscendSampler does not implement "processed_logprobs" yet (its own
+# default is "raw_logprobs"): on NPU the processed path yields non-finite sampled-token
+# logprobs, which vllm-omni's AR scheduler rejects. Force vLLM's default raw mode.
 exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run_bpm_qwen3_omni_thinker_lora_smoke.sh" \
     trainer.device=npu \
     actor_rollout_ref.rollout.enforce_eager=True \
     ++actor_rollout_ref.rollout.engine_kwargs.vllm_omni.additional_config.weight_nz_mode=0 \
+    actor_rollout_ref.rollout.logprobs_mode=raw_logprobs \
     "$@"

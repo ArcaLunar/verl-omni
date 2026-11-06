@@ -18,17 +18,17 @@
 #
 # Runtime dependencies (all Ray worker nodes): math-verify (reward logging), qwen-vl-utils.
 #
-# Paths (env overrides):
-#   STUDENT_PATH  Qwen3-Omni-30B-A3B-Instruct checkpoint
-#   TEACHER_PATH  Qwen3.5-35B-A3B checkpoint (its tokenizer, processor and chat template are read from it)
-#   TRAIN_FILE / VAL_FILE  MMK12 parquet files
+# Paths (env overrides; a Hugging Face ID and a local checkpoint dir are both accepted):
+#   STUDENT_PATH  default Qwen/Qwen3-Omni-30B-A3B-Instruct
+#   TEACHER_PATH  default Qwen/Qwen3.5-35B-A3B (its tokenizer, processor and chat template are read from it)
+#   TRAIN_FILE / VAL_FILE  default the single train/test parquet files written by the data preparation above
 set -euo pipefail
 
 # Make verl_omni available to Ray workers
 export VERL_USE_EXTERNAL_MODULES=verl_omni
 
-STUDENT_PATH=${STUDENT_PATH:-"$HOME/models/Qwen/Qwen3-Omni-30B-A3B-Instruct"}
-TEACHER_PATH=${TEACHER_PATH:-"$HOME/models/Qwen/Qwen3.5-35B-A3B"}
+STUDENT_PATH=${STUDENT_PATH:-Qwen/Qwen3-Omni-30B-A3B-Instruct}
+TEACHER_PATH=${TEACHER_PATH:-Qwen/Qwen3.5-35B-A3B}
 TRAIN_FILE=${TRAIN_FILE:-"$HOME/data/mmk12/train.parquet"}
 VAL_FILE=${VAL_FILE:-"$HOME/data/mmk12/test.parquet"}
 TRAIN_GPUS=${TRAIN_GPUS:-4}

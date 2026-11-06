@@ -38,7 +38,19 @@ if [ ! -f "${DATA_DIR}/train.parquet" ]; then
     python3 "${REPO_ROOT}/tests/special_e2e/create_dummy_math_data.py" --local_save_dir "${DATA_DIR}"
 fi
 
+# The random tiny teacher is close to uniform, so a top-k of 16 holds only a few percent of
+# its vocabulary and the realized teacher tokens that interior and spanning (N:1/M:N)
+# targets need almost never make the top-k, demoting those rows to TEACHER_TOKEN_MISSING.
+# Score the whole tiny vocabulary as top-k so every row kind is trained; the real recipe
+# keeps TOPK=64 against a trained teacher whose top-k carries most of the mass.
+TEACHER_TOPK=$(python3 -c \
+    "import json, sys; print(json.load(open(sys.argv[1] + '/config.json'))['vocab_size'])" \
+    "${TEACHER_PATH}")
+
 # ── Run V1 training with BPM (2 steps) ────────────────────────────────────────
+# BPM hands the teacher the prompt re-rendered in the teacher's own (finer) tokenizer together
+# with the whole response, so teacher-side sequences outgrow the student's 256+512 budget; the
+# student rollout and the teacher engine are both sized for that at 4096.
 python3 -m verl_omni.trainer.main_omni \
     data.train_files="${DATA_DIR}/train.parquet" \
     data.val_files="${DATA_DIR}/test.parquet" \
@@ -76,6 +88,7 @@ python3 -m verl_omni.trainer.main_omni \
     actor_rollout_ref.rollout.tensor_model_parallel_size="${NUM_GPUS}" \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
     actor_rollout_ref.rollout.max_num_seqs=16 \
+    actor_rollout_ref.rollout.max_model_len=4096 \
     actor_rollout_ref.rollout.load_format=safetensors \
     actor_rollout_ref.rollout.log_prob_use_dynamic_bsz=True \
     actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=4096 \
@@ -90,7 +103,7 @@ python3 -m verl_omni.trainer.main_omni \
     distillation.nnodes=1 \
     distillation.n_gpus_per_node="${TEACHER_GPUS}" \
     distillation.distillation_loss.loss_mode=bpm \
-    distillation.distillation_loss.topk=16 \
+    distillation.distillation_loss.topk="${TEACHER_TOPK}" \
     distillation.distillation_loss.use_task_rewards=false \
     distillation.distillation_loss.use_policy_gradient=false \
     distillation.distillation_loss.loss_max_clamp=null \
@@ -99,7 +112,7 @@ python3 -m verl_omni.trainer.main_omni \
     distillation.teacher_models.teacher_model.inference.name=vllm \
     distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size=1 \
     distillation.teacher_models.teacher_model.inference.gpu_memory_utilization=0.3 \
-    distillation.teacher_models.teacher_model.inference.max_model_len=1024 \
+    distillation.teacher_models.teacher_model.inference.max_model_len=4096 \
     distillation.teacher_models.teacher_model.inference.enable_prefix_caching=False \
     bpm.beta=0.5 \
     reward.reward_manager.source=register \

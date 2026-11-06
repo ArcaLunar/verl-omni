@@ -15,9 +15,13 @@ export VLLM_ASCEND_ENABLE_NZ=0
 export TRAIN_GPUS=${TRAIN_GPUS:-8}
 export TEACHER_GPUS=${TEACHER_GPUS:-8}
 
+# vllm-ascend's AscendSampler does not implement "processed_logprobs" yet (its own
+# default is "raw_logprobs"): on NPU the processed path yields non-finite sampled-token
+# logprobs, which vllm-omni's AR scheduler rejects. Force vLLM's default raw mode.
 exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh" \
     actor_rollout_ref.rollout.cudagraph_capture_sizes="[1,2,4,16,64,128,512,1024,2048,3072,4096]" \
     ++actor_rollout_ref.rollout.engine_kwargs.vllm_omni.additional_config.weight_nz_mode=0 \
     ++actor_rollout_ref.rollout.engine_kwargs.vllm_omni.compilation_config.cudagraph_mode=PIECEWISE \
+    actor_rollout_ref.rollout.logprobs_mode=raw_logprobs \
     trainer.logger='["console","tensorboard"]' \
     "$@"

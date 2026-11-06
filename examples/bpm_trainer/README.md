@@ -35,25 +35,43 @@ The recipe therefore leaves `bpm.teacher_generation_suffix` at its default `""`.
 On Ascend NPU (910C, 16 NPUs per node) use the `_npu` launcher: it defaults to 8 NPUs for
 the student and 8 for the teacher (four TP=2 replicas on vllm-ascend), and adds the
 vllm-ascend settings of the Qwen3-Omni NPU recipes (`VLLM_ASCEND_ENABLE_NZ=0`,
-`weight_nz_mode=0`, piecewise graphs). All other environment variables are shared.
+`weight_nz_mode=0`, piecewise graphs). It also forces
+`actor_rollout_ref.rollout.logprobs_mode=raw_logprobs`: vllm-ascend's `AscendSampler` does
+not implement `processed_logprobs` yet (its own default is `raw_logprobs`), and on NPU the
+processed path yields non-finite sampled-token logprobs that vllm-omni's AR scheduler
+rejects. All other environment variables are shared.
 
 Data preparation and dependencies follow the
-[MMK12 GSPO recipe](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/README.md):
+[MMK12 GSPO recipe](https://github.com/verl-project/verl-omni/blob/main/examples/gspo_trainer/README.md). The
+converter reads every raw `train-*.parquet` / `test-*.parquet` shard (the Hub layout is three train shards and
+one test shard) and writes one `train.parquet` and one `test.parquet`, which is what `TRAIN_FILE` / `VAL_FILE`
+default to:
 
 ```bash
 pip install math-verify qwen-vl-utils
 python examples/gspo_trainer/data_process/mmk12.py \
     --local_dataset_path <path_to_raw_mmk12> --local_save_dir ~/data/mmk12
 
-STUDENT_PATH=/path/to/Qwen3-Omni-30B-A3B-Instruct \
-TEACHER_PATH=/path/to/Qwen3.5-35B-A3B \
 bash examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh
 ```
+
+The raw shards themselves are not usable as `TRAIN_FILE` / `VAL_FILE`: they still carry the
+`id / question / answer / subject / image` schema, which lacks the `prompt` and `reward_model` columns the RL
+dataset reads.
+
+`STUDENT_PATH` / `TEACHER_PATH` default to the Hugging Face Hub IDs `Qwen/Qwen3-Omni-30B-A3B-Instruct` and
+`Qwen/Qwen3.5-35B-A3B`; both accept a local checkpoint directory instead. Hub IDs are downloaded into the
+standard Hub cache on every node that loads them (~60 GB for the student and ~70 GB for the teacher in bf16), so
+point `HF_HOME` (or `HF_HUB_CACHE`) at a shared or sufficiently large disk before the first run.
 
 Environment overrides:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
+| `STUDENT_PATH` | `Qwen/Qwen3-Omni-30B-A3B-Instruct` | Student checkpoint: Hub ID or local dir. |
+| `TEACHER_PATH` | `Qwen/Qwen3.5-35B-A3B` | Teacher checkpoint: Hub ID or local dir; its tokenizer, processor and chat template are read from it. |
+| `TRAIN_FILE` | `~/data/mmk12/train.parquet` | Training parquet. Several shards work as a quoted glob (`"$HOME/raw/train-*.parquet"`) or an explicit Hydra list (`"['a.parquet','b.parquet']"`); a directory is rejected. |
+| `VAL_FILE` | `~/data/mmk12/test.parquet` | Validation parquet; same forms as `TRAIN_FILE`. |
 | `TOPK` | `64` | Teacher top-k log-probs per position. Qwen3.5's 248k vocabulary covers less mass per top-k than a 152k teacher, so `128` is worth trying if `distillation/bpm_q_other` is high. |
 | `BETA` | `0.0` | `bpm.beta`; `0` is forward KL, the paper's best setting. |
 | `WHITESPACE_MASK` | `all` | `bpm.whitespace_mask`; `indentation` keeps the lone-space rows Qwen tokenizers emit before numbers. |
@@ -81,4 +99,7 @@ are 1:1 and 2.6% are split (1:N/N:1), with 4.5% all-whitespace rows withheld und
   `Qwen3_5MoeForCausalLM`, byte-level tokenizer on a different corpus than the student's,
   attention-only tiny layers so vLLM skips its hybrid SSM KV-cache path: tiny
   Gated-DeltaNet dimensions cannot satisfy that path's SSM/attention page-size alignment).
+  Because the random tiny teacher's softmax is nearly uniform, the smoke scores its whole
+  vocabulary as top-k (the trained-teacher recipe keeps `TOPK=64`); otherwise the realized
+  teacher tokens never reach the top-k, so spanning rows become `TEACHER_TOKEN_MISSING`.
 - The full-size recipe has not been run yet.

@@ -1,6 +1,6 @@
 # Cross-Tokenizer On-Policy Distillation (BPM)
 
-Last updated: 11/02/2026.
+Last updated: 11/04/2026.
 
 ## Background
 
@@ -119,7 +119,10 @@ with an Ascend NPU variant (`..._npu.sh`).
 Smoke: `tests/special_e2e/run_bpm_qwen3_omni_thinker_lora_smoke.sh` (GPU) and
 `run_bpm_qwen3_omni_thinker_lora_npu_smoke.sh` (Ascend NPU) build a tiny Qwen3-Omni student
 and a tiny Qwen3.5-MoE teacher with differently trained tokenizers and run two steps on
-3 devices.
+3 devices. The random tiny teacher's softmax is nearly uniform, so the smoke uses its whole
+vocabulary as the teacher top-k (the trained-teacher recipe keeps `TOPK=64`); with a small
+top-k the realized teacher tokens stay outside it and every spanning row is classified
+`TEACHER_TOKEN_MISSING`.
 
 ## Limitations
 

@@ -75,6 +75,16 @@ def test_recipe_uses_a_native_vllm_vlm_teacher(recipe_config):
     assert distillation.distillation_loss.loss_settings.use_topk
 
 
+def test_recipe_defaults_to_hugging_face_model_ids(tmp_path):
+    # Empty overrides clear any STUDENT_PATH / TEACHER_PATH exported by the caller.
+    result, argv = _launcher_argv(tmp_path, "trainer.total_epochs=1", STUDENT_PATH="", TEACHER_PATH="")
+    assert result.returncode == 0, result.stderr
+    config = _compose(argv)
+    assert config.actor_rollout_ref.model.path == "Qwen/Qwen3-Omni-30B-A3B-Instruct"
+    [teacher] = omega_conf_to_dataclass(config.distillation).teacher_models.values()
+    assert teacher.model_path == "Qwen/Qwen3.5-35B-A3B"
+
+
 def test_recipe_builds_the_bpm_loss_and_agent_loop(recipe_config):
     loss_fn = build_omni_distillation_actor_loss(recipe_config)
     bpm = loss_fn.keywords["bpm_config"]
