@@ -1,6 +1,6 @@
 # Cross-Tokenizer On-Policy Distillation (BPM) Recipes
 
-Last updated: 11/02/2026
+Last updated: 11/10/2026
 
 Recipes for [BPM](https://github.com/verl-project/verl-omni/blob/main/docs/algo/bpm.md): on-policy distillation from a teacher whose
 tokenizer differs from the student's. The student samples its own responses; the teacher
@@ -11,6 +11,8 @@ distribution is mapped onto the student vocabulary by byte-prefix marginalizatio
 | --- | --- | --- | --- |
 | MMK12 LoRA, pure distillation | Qwen3-Omni-30B-A3B-Instruct Thinker / Qwen3.5-35B-A3B | GPU | [run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5.sh) |
 | MMK12 LoRA, pure distillation | same | Ascend NPU | [run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5_npu.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_omni/run_qwen3_omni_thinker_bpm_lora_mmk12_qwen3_5_npu.sh) |
+| MMK12 LoRA, pure distillation | Qwen3.5-0.8B / Qwen3-VL-4B-Instruct | GPU | [run_qwen3_5_0_8b_bpm_lora_mmk12_qwen3_vl.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_5/run_qwen3_5_0_8b_bpm_lora_mmk12_qwen3_vl.sh) |
+| MMK12 LoRA, pure distillation | same | Ascend NPU | [run_qwen3_5_0_8b_bpm_lora_mmk12_qwen3_vl_npu.sh](https://github.com/verl-project/verl-omni/blob/main/examples/bpm_trainer/qwen3_5/run_qwen3_5_0_8b_bpm_lora_mmk12_qwen3_vl_npu.sh) |
 
 ## Qwen3-Omni Thinker from Qwen3.5-35B-A3B on MMK12
 
